@@ -1,0 +1,19 @@
+# IDE project folders
+/.idea
+/.vcs
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+/venv*
+.env
+
+# Translations
+*.mo
+*.pot
+
+# Static files
+/static
