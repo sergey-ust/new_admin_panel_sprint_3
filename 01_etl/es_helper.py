@@ -1,7 +1,10 @@
+import logging
 from typing import Optional
 
 import elasticsearch.client.indices
 from elasticsearch import Elasticsearch
+
+logger = logging.getLogger(__name__)
 
 
 class Connection:
@@ -29,7 +32,7 @@ class Connection:
             id=identifier,
             document=data
         )
-        print(resp['result'])
+        logger.debug(resp['result'])
 
     def is_exist(self, index_name: str) -> bool:
         index = elasticsearch.client.indices.IndicesClient(self._connection)
