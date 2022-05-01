@@ -1,24 +1,20 @@
-from es_helper import Connection
-from model import FilmWork, Person
+from datetime import datetime, timezone
+
+import es_helper
+import psql_helper
+from state.saver import State
+from state.storage import JsonFileStorage
 
 
 def main():
-    test = FilmWork(
-        id="12345",
-        imdb_rating=0.9,
-        genre="comdey",
-        title="trololo",
-        description="ololo",
-        director=["Bdij LL"],
-        actors_names=["Bdij Bduff", "Bduff Bdij"],
-        writers_names=["Some Any"],
-        actors=[
-            Person(id="678U", name="Jon B")
-        ],
-        writers=[]
-    )
-    es = Connection()
-    es.post(test.dict(), identifier="12345")
+    states = State(JsonFileStorage("states.json"))
+    es = es_helper.Connection()
+    exist = not es.is_exist("movies") and states.get_state("psql") is not None
+    psql = psql_helper.Connection()
+    timestamp = datetime.utcnow() if exist \
+        else datetime.fromtimestamp(0.0, timezone.utc)
+    persons = psql.get_modified("content.person", timestamp, 0)
+    print(persons)
 
 
 if __name__ == '__main__':
