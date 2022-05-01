@@ -20,6 +20,8 @@ def main():
         else datetime.fromtimestamp(0.0, timezone.utc)
     persons_ids = psql.get_modified("content.person", timestamp, 0)
     logger.debug(f"Persons {persons_ids} were updated since {timestamp}.")
+    fw_ids = psql.get_fw_id_by_persons(persons_ids)
+    logger.info(f"Persons {fw_ids} will be updated.")
 
 
 if __name__ == '__main__':
