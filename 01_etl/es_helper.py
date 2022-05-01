@@ -1,5 +1,6 @@
 from typing import Optional
 
+import elasticsearch.client.indices
 from elasticsearch import Elasticsearch
 
 
@@ -29,3 +30,7 @@ class Connection:
             document=data
         )
         print(resp['result'])
+
+    def is_exist(self, index_name: str) -> bool:
+        index = elasticsearch.client.indices.IndicesClient(self._connection)
+        return index.exists(index=index_name)
