@@ -25,8 +25,13 @@ def main():
         return 0
     logger.info(f"Film works {fw_ids} will be updated because person updates.")
     film_works = psql.get_filmworks(fw_ids)
+    now_time = datetime.utcnow()
+
     fw_models = [FilmWork.create_from_sql(**fw) for fw in film_works]
     es.post(fw_models[0].dict(), identifier=fw_models[0].id)
+
+    for entry in fw_models:
+        states.set_state(str(entry.id), str(now_time))
     # FixMe add update film works {id + utc_datetime}
 
 
