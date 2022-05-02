@@ -22,6 +22,8 @@ def main():
     logger.debug(f"Persons {persons_ids} were updated since {timestamp}.")
     fw_ids = psql.get_fw_id_by_persons(persons_ids)
     logger.info(f"Persons {fw_ids} will be updated.")
+    res = psql.get_result(fw_ids)
+    logger.info(f"Film works {res} will be updated.")
 
 
 if __name__ == '__main__':
