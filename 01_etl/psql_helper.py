@@ -41,13 +41,36 @@ class Connection:
         )
         return [i[0] for i in self.cursor.fetchall()]
 
-    def get_fw_id_by_persons(self, ids_range: list[UUID]):
+    def get_fw_id(self, name: str, mod_time: datetime, offset: int,
+                  limit: int = REQUEST_MAX_ENTRIES):
+        params = {
+            "film_work": "content.film_work",
+            "m2m": f"content.{name}_film_work",
+            "m2m_ids": f"content.{name}_film_work.{name}_id",
+            "table": name,
+            "mod_time": mod_time,
+            "limit": limit,
+            "offset": offset,
+        }
+        query = Template(
+            "SELECT $film_work.id FROM $film_work \
+            LEFT JOIN $m2m  ON $m2m.film_work_id =  $film_work.id \
+            WHERE $m2m_ids  IN(\
+                    SELECT id  FROM content.$table\
+                    WHERE modified > '$mod_time'\
+                    LIMIT $limit  OFFSET $offset\
+            );"
+        ).substitute(params)
+        self.cursor.execute(query)
+        return [i[0] for i in self.cursor.fetchall()]
+
+    def get_fw_id_by_table(self, name: str, ids_range: list[UUID]):
         ids = ", ".join("'{}'".format(str(i)) for i in ids_range)
         params = {
             "film_work": "content.film_work",
             "film_work_id": "content.film_work.id",
-            "m2m": "content.person_film_work",
-            "m2m_ids": "content.person_film_work.person_id",
+            "m2m": f"content.{name}_film_work",
+            "m2m_ids": f"content.{name}_film_work.{name}_id",
             "join_range": ids
         }
         query = Template(
@@ -58,21 +81,20 @@ class Connection:
         self.cursor.execute(query)
         return [i[0] for i in self.cursor.fetchall()]
 
-    def get_result(self, fw_id_range: list[UUID]):
+    def get_filmworks(self, fw_id_range: list[UUID]):
         params = {
             "id_range": ", ".join("'{}'".format(str(i)) for i in fw_id_range)
         }
         query = Template(
             "SELECT \
-                fw.id as fw_id,\
+                fw.id,\
                 fw.title,\
                 fw.description,\
                 fw.rating,\
-                fw.type as fw_type,\
                 json_agg(DISTINCT jsonb_build_object(\
-                       'person_role', pfw.role,\
-                       'person_id', p.id,\
-                       'person_name', p.full_name)\
+                       'role', pfw.role,\
+                       'id', p.id,\
+                       'name', p.full_name)\
                 ) persons,\
                 ARRAY_AGG(DISTINCT g.name) genres \
             FROM content.film_work fw \

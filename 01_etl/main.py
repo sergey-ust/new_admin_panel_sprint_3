@@ -18,12 +18,13 @@ def main():
     psql = psql_helper.Connection()
     timestamp = datetime.utcnow() if exist \
         else datetime.fromtimestamp(0.0, timezone.utc)
-    persons_ids = psql.get_modified("content.person", timestamp, 0)
-    logger.debug(f"Persons {persons_ids} were updated since {timestamp}.")
-    fw_ids = psql.get_fw_id_by_persons(persons_ids)
-    logger.info(f"Persons {fw_ids} will be updated.")
-    res = psql.get_result(fw_ids)
-    logger.info(f"Film works {res} will be updated.")
+    fw_ids = psql.get_fw_id("person", timestamp, 0)
+    # FixMe remove already updated filmworks
+    if not fw_ids:
+        return 0
+    logger.info(f"Film works {fw_ids} will be updated because person updates.")
+    film_works = psql.get_filmworks(fw_ids)
+    # FixMe add update film works {id + utc_datetime}
 
 
 if __name__ == '__main__':
