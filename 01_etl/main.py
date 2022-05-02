@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 import es_helper
+from model import FilmWork
 import psql_helper
 from state.saver import State
 from state.storage import JsonFileStorage
@@ -24,6 +25,8 @@ def main():
         return 0
     logger.info(f"Film works {fw_ids} will be updated because person updates.")
     film_works = psql.get_filmworks(fw_ids)
+    fw_models = [FilmWork.create_from_sql(**fw) for fw in film_works]
+    es.post(fw_models[0].dict(), identifier=fw_models[0].id)
     # FixMe add update film works {id + utc_datetime}
 
 
