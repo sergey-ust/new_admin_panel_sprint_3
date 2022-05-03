@@ -18,9 +18,10 @@ class State:
         self.storage = storage
         self.states = self.storage.retrieve_state()
 
-    def set_state(self, key: str, value: Any) -> None:
+    def set_state(self, key: str, value: Any, flush=True) -> None:
         self.states[key] = value
-        self.storage.save_state(self.states)
+        if flush:
+            self.storage.save_state(self.states)
 
     def get_state(self, key: str) -> Any:
         # read_st = self.state.retrieve_state()
