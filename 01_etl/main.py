@@ -36,8 +36,9 @@ def update_persons(
     # FixMe remove already updated filmworks
     if not fw_ids:
         table_state.position = -1
+        table_state.timestamp = table_state.next_timestamp
         states.set_state(str(TableName.PERSON), table_state.dict())
-        return 0
+        return
     logger.info(
         "Changes in {} occures update for film works: {}.".format(
             TableName.PERSON.value,
@@ -49,12 +50,10 @@ def update_persons(
     fw_models = [FilmWork.create_from_sql(**fw) for fw in film_works]
     es.post(fw_models[0].dict(), identifier=fw_models[0].id)
     # store entries and table state
-    for entry in fw_models:
-        states.set_state(str(entry.id), str(now_time), False)
 
     if table_state.position < 0:
         table_state.position = 0
-        table_state.timestamp = now_time
+        table_state.next_timestamp = now_time
 
     table_state.position += req_limit
     states.set_state(TableName.PERSON.value, table_state.dict())
