@@ -31,11 +31,18 @@ def update_table(
     fw_extractor = \
         psql.get_modified if table.value == TableName.FILM_WORK.value \
             else psql.get_fw_id
+
+    # FixMe there could be too many IDs(should be limit and offset). It's crytical for genre
+    fw_ids = fw_extractor(
+        table.value,
         table_state.timestamp,
         offset,
         req_limit
     )
+    # check if FirmWare model was already updated by other field
+    # need_upd =  [for i in fw_ids if (res := states.get_state(str(i))) or res <   ]
     # FixMe remove already updated filmworks
+    # states.get_apsent(fw_ids)
     if not fw_ids:
         table_state.position = -1
         table_state.timestamp = table_state.next_timestamp
@@ -50,8 +57,12 @@ def update_table(
     now_time = datetime.utcnow()
     # convert to elasticsearch mapping
     fw_models = [FilmWork.create_from_sql(**fw) for fw in film_works]
+    # FixMe add bunch post
     es.post(fw_models[0].dict(), identifier=fw_models[0].id)
     # store entries and table state
+    # FixMe such ids wouldn't work
+    # for entry in fw_models:
+    #     states.set_state(str(entry.id), str(now_time), False)
 
     if table_state.position < 0:
         table_state.position = 0
