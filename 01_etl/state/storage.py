@@ -18,7 +18,7 @@ class JsonFileStorage(BaseStorage):
     def save_state(self, state: dict) -> None:
         if self.file_path is None:
             return
-        data = json.dumps(state)
+        data = json.dumps(state, indent=4, sort_keys=True, default=str)
         with open(self.file_path, "w") as wr_file:
             wr_file.write(data)
 
