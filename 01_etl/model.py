@@ -36,7 +36,7 @@ class FilmWork(BaseModel):
 
         return FilmWork(
             id=kwargs["id"],
-            imdb_rating=kwargs["rating"],
+            imdb_rating=kwargs["rating"] if kwargs["rating"] else 0,
             genre=", ".join(kwargs["genres"]),
             title=kwargs["title"],
             description=kwargs["description"],
