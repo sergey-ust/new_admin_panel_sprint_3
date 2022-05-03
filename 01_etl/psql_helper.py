@@ -53,8 +53,8 @@ class Connection:
             "offset": offset,
         }
         query = Template(
-            "SELECT $film_work.id FROM $film_work \
-            LEFT JOIN $m2m  ON $m2m.film_work_id =  $film_work.id \
+            "SELECT DISTINCT $film_work.id FROM $film_work \
+            JOIN $m2m  ON $m2m.film_work_id =  $film_work.id \
             WHERE $m2m_ids  IN(\
                     SELECT id  FROM content.$table\
                     WHERE modified > '$mod_time'\
@@ -74,7 +74,7 @@ class Connection:
             "join_range": ids
         }
         query = Template(
-            "SELECT $film_work_id FROM $film_work \
+            "SELECT DISTINCT $film_work_id FROM $film_work \
             LEFT JOIN $m2m  ON $m2m.film_work_id =  $film_work_id \
             WHERE $m2m_ids  IN($join_range);"
         ).substitute(params)
