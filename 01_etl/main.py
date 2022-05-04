@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import es_helper
 from model import FilmWork
@@ -46,7 +46,8 @@ def update_table(
     # check if FirmWare model was already updated by other field
     fw_ids = [
         i for i in fw_ids if
-        not (res := fw_states.get_state(str(i))) or res < latest_date
+        not (res := fw_states.get_state(str(i))) or datetime.fromisoformat(
+            res) < latest_date
     ]
     if not fw_ids:
         table_state.position = -1
@@ -59,14 +60,14 @@ def update_table(
             fw_ids)
     )
     film_works = psql.get_filmworks(fw_ids)
-    load_time = datetime.utcnow()
+    load_time = datetime.now(tz=timezone.utc)
     fw_models = [FilmWork.create_from_sql(**fw).dict() for fw in film_works]
     es.post_bulk(fw_models)
     # store entries and table state
     for entry in fw_models[: -1]:
-        fw_states.set_state(str(entry.id), str(load_time), False)
+        fw_states.set_state(str(entry["id"]), load_time, False)
     # save all cached
-    fw_states.set_state(str(fw_models[-1].id), str(load_time))
+    fw_states.set_state(str(fw_models[-1]["id"]), load_time)
 
     if table_state.position < 0:
         table_state.position = 0
