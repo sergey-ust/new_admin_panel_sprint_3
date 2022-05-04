@@ -30,8 +30,8 @@ class Connection:
     def get_modified(self, table: str, req_time: datetime, offset: int,
                      limit: int = REQUEST_MAX_ENTRIES) -> list[UUID]:
         self.cursor.execute(
-            "SELECT id  FROM {table} WHERE  \
-            modified > '{mod_time}' ORDER BY modified \
+            "SELECT id, modified FROM content.{table} WHERE  \
+            modified > '{mod_time}' ORDER BY modified DESC \
             LIMIT {limit}  OFFSET {offset};".format(
                 table=table,
                 mod_time=req_time,
@@ -39,6 +39,7 @@ class Connection:
                 offset=offset
             )
         )
+        return self.cursor.fetchall()
         return [i[0] for i in self.cursor.fetchall()]
 
     def get_fw_id(self, name: str, mod_time: datetime, offset: int,
