@@ -15,10 +15,12 @@ logger = logging.getLogger(__name__)
 def update_table(
         table: TableName,
         state_path: str,
+        film_works_path: str,
         req_limit: int = psql_helper.Connection.REQUEST_MAX_ENTRIES
 ):
     # connect and restore
     states = State(JsonFileStorage(state_path))
+    fw_states = State(JsonFileStorage(film_works_path))
     es = es_helper.Connection()
     psql = psql_helper.Connection()
     table_state = states.get_state(table.value)
@@ -28,21 +30,24 @@ def update_table(
         table_state = TableState(**table_state)
     # extract
     offset = 0 if table_state.position < 0 else table_state.position
-    fw_extractor = \
-        psql.get_modified if table.value == TableName.FILM_WORK.value \
-            else psql.get_fw_id
-
-    # FixMe there could be too many IDs(should be limit and offset). It's crytical for genre
-    fw_ids = fw_extractor(
+    ids = psql.get_modified(
         table.value,
         table_state.timestamp,
         offset,
         req_limit
     )
+    latest_date = ids[0][1]
+    print(latest_date)
+    fw_ids = [i[0] for i in ids]
+    if table.value != TableName.FILM_WORK.value:
+        # FixMe there could be too many IDs(should be limit and offset). It's crytical for genre
+        fw_ids = psql.get_fw_id_by_table(table.value, fw_ids)
+
     # check if FirmWare model was already updated by other field
-    # need_upd =  [for i in fw_ids if (res := states.get_state(str(i))) or res <   ]
-    # FixMe remove already updated filmworks
-    # states.get_apsent(fw_ids)
+    fw_ids = [
+        i for i in fw_ids if
+        not (res := fw_states.get_state(str(i))) or res < latest_date
+    ]
     if not fw_ids:
         table_state.position = -1
         table_state.timestamp = table_state.next_timestamp
@@ -54,19 +59,19 @@ def update_table(
             fw_ids)
     )
     film_works = psql.get_filmworks(fw_ids)
-    now_time = datetime.utcnow()
-    # convert to elasticsearch mapping
+    load_time = datetime.utcnow()
     fw_models = [FilmWork.create_from_sql(**fw) for fw in film_works]
     # FixMe add bunch post
     es.post(fw_models[0].dict(), identifier=fw_models[0].id)
     # store entries and table state
-    # FixMe such ids wouldn't work
-    # for entry in fw_models:
-    #     states.set_state(str(entry.id), str(now_time), False)
+    for entry in fw_models[: -1]:
+        fw_states.set_state(str(entry.id), str(load_time), False)
+    # save all cached
+    fw_states.set_state(str(fw_models[-1].id), str(load_time))
 
     if table_state.position < 0:
         table_state.position = 0
-        table_state.next_timestamp = now_time
+        table_state.next_timestamp = load_time
 
     table_state.position += req_limit
     states.set_state(table.value, table_state.dict())
@@ -78,9 +83,9 @@ def main():
         logger.error("Create index first")
         return -1
 
-    update_table(TableName.GENRE, "states.json")
-    update_table(TableName.PERSON, "states.json")
-    update_table(TableName.FILM_WORK, "states.json")
+    update_table(TableName.GENRE, "states.json", "fw_logs.json")
+    update_table(TableName.PERSON, "states.json", "fw_logs.json")
+    update_table(TableName.FILM_WORK, "states.json", "fw_logs.json")
 
 
 if __name__ == '__main__':
