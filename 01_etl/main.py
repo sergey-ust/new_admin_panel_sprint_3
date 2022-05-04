@@ -60,9 +60,8 @@ def update_table(
     )
     film_works = psql.get_filmworks(fw_ids)
     load_time = datetime.utcnow()
-    fw_models = [FilmWork.create_from_sql(**fw) for fw in film_works]
-    # FixMe add bunch post
-    es.post(fw_models[0].dict(), identifier=fw_models[0].id)
+    fw_models = [FilmWork.create_from_sql(**fw).dict() for fw in film_works]
+    es.post_bulk(fw_models)
     # store entries and table state
     for entry in fw_models[: -1]:
         fw_states.set_state(str(entry.id), str(load_time), False)

@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 import elasticsearch.client.indices
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, helpers
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,29 @@ class Connection:
             id=identifier,
             document=data
         )
-        logger.debug(resp['result'])
+        logger.debug(resp["result"])
+
+    def post_bulk(self, data: list[dict], index: str = "movies"):
+        actions = [
+            {
+                "_id": d["id"],
+                **d
+            }
+            for d in data
+        ]
+        result = helpers.bulk(self._connection, actions, index=index)
+        logger.debug(result)
+
+    def delete_bulk(self, data: list[str], index: str = "movies"):
+        actions = [
+            {
+                '_op_type': 'delete',
+                "_id": str(d),
+            }
+            for d in data
+        ]
+        result = helpers.bulk(self._connection, actions, index=index)
+        logger.debug(result)
 
     def is_exist(self, index_name: str) -> bool:
         index = elasticsearch.client.indices.IndicesClient(self._connection)
