@@ -27,6 +27,16 @@ class Connection:
         self.cursor.close()
         self.conn.close()
 
+    def get_modified_count(self, table: str, req_time: datetime) -> int:
+        self.cursor.execute(
+            "SELECT COUNT(id) FROM content.{table} WHERE  \
+            modified > '{mod_time}';".format(
+                table=table,
+                mod_time=req_time
+            )
+        )
+        return res if (res := self.cursor.fetchall()) else 0
+
     def get_modified(self, table: str, req_time: datetime, offset: int,
                      limit: int = REQUEST_MAX_ENTRIES) -> list[UUID]:
         self.cursor.execute(

@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import datetime, timezone
+from typing import Union
 
 from pydantic import BaseModel
 
@@ -23,9 +24,9 @@ class TableState(BaseModel):
             position=-1
         )
 
-    def serialize(self) -> dict[str, int]:
+    def serialize(self) -> dict[str, Union[int, datetime]]:
         return {
             "timestamp": self.timestamp,
             "next_timestamp": self.next_timestamp,
-            "position": self.position
+            "position": self.position,
         }
