@@ -15,7 +15,7 @@ class Person(BaseModel):
 class FilmWork(BaseModel):
     id: UUID
     imdb_rating: float
-    genre: str
+    genre: list[str]
     title: str
     description: str
     director: list[str]
@@ -37,7 +37,7 @@ class FilmWork(BaseModel):
         return FilmWork(
             id=kwargs["id"],
             imdb_rating=kwargs["rating"] if kwargs["rating"] else 0,
-            genre=", ".join(kwargs["genres"]),
+            genre=kwargs["genres"],
             title=kwargs["title"],
             description=kwargs["description"],
             director=[i.name for i in directors],
