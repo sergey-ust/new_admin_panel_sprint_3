@@ -40,6 +40,22 @@ class Connection:
             )
         )
         return self.cursor.fetchall()
+
+    def get_fw_id_by_table(self, name: str, ids_range: list[UUID]):
+        ids = ", ".join("'{}'".format(str(i)) for i in ids_range)
+        params = {
+            "film_work": "content.film_work",
+            "film_work_id": "content.film_work.id",
+            "m2m": f"content.{name}_film_work",
+            "m2m_ids": f"content.{name}_film_work.{name}_id",
+            "join_range": ids
+        }
+        query = Template(
+            "SELECT DISTINCT $film_work_id FROM $film_work \
+            LEFT JOIN $m2m  ON $m2m.film_work_id =  $film_work_id \
+            WHERE $m2m_ids  IN($join_range);"
+        ).substitute(params)
+        self.cursor.execute(query)
         return [i[0] for i in self.cursor.fetchall()]
 
     def get_fw_id(self, name: str, mod_time: datetime, offset: int,
@@ -57,27 +73,10 @@ class Connection:
             "SELECT DISTINCT $film_work.id FROM $film_work \
             JOIN $m2m  ON $m2m.film_work_id =  $film_work.id \
             WHERE $m2m_ids  IN(\
-                    SELECT id  FROM content.$table\
+                    SELECT id FROM content.$table\
                     WHERE modified > '$mod_time'\
                     LIMIT $limit  OFFSET $offset\
             );"
-        ).substitute(params)
-        self.cursor.execute(query)
-        return [i[0] for i in self.cursor.fetchall()]
-
-    def get_fw_id_by_table(self, name: str, ids_range: list[UUID]):
-        ids = ", ".join("'{}'".format(str(i)) for i in ids_range)
-        params = {
-            "film_work": "content.film_work",
-            "film_work_id": "content.film_work.id",
-            "m2m": f"content.{name}_film_work",
-            "m2m_ids": f"content.{name}_film_work.{name}_id",
-            "join_range": ids
-        }
-        query = Template(
-            "SELECT DISTINCT $film_work_id FROM $film_work \
-            LEFT JOIN $m2m  ON $m2m.film_work_id =  $film_work_id \
-            WHERE $m2m_ids  IN($join_range);"
         ).substitute(params)
         self.cursor.execute(query)
         return [i[0] for i in self.cursor.fetchall()]
