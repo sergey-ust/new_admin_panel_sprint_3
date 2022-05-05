@@ -27,14 +27,12 @@ def main():
         if not es.is_exist("movies"):
             logger.error("Create index first")
             return -1
-    except Exception as error:
-        logger.debug(f"Elasticsearch 'is_exist' error: {error}")
+    except (ProtocolError, NewConnectionError) as error:
+        logger.exception(f"Elasticsearch 'is_exist' error: {error}")
 
     states = State(JsonFileStorage("states.json"))
     fw_states = State(JsonFileStorage("states_fw.json"))
-    turn = states.get_state("turn")
-    if not turn:
-        turn = TableName.GENRE.value
+    turn = t if (t := states.get_state("turn")) else TableName.GENRE.value
 
     for i in range(len(UPD_TURNS)):
         etl = Etl(turn, states, fw_states)

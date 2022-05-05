@@ -41,8 +41,20 @@ class Connection:
         )
         return res if (res := self.cursor.fetchall()) else 0
 
-    def get_modified(self, table: str, req_time: datetime, offset: int,
-                     limit: int = REQUEST_MAX_ENTRIES) -> list[UUID]:
+    def get_modified(
+            self,
+            table: str,
+            req_time: datetime,
+            offset: int,
+            limit: int = REQUEST_MAX_ENTRIES) -> list[list[UUID, datetime]]:
+        """Request table entries older, then @req_time
+
+        :param table: table name
+        :param req_time: request date and time
+        :param offset: query offset
+        :param limit: query limit
+        :return descend ordered by modification date list[list[UUI, datetime]]:
+        """
         self.cursor.execute(
             "SELECT id, modified FROM content.{table} WHERE  \
             modified > '{mod_time}' ORDER BY modified DESC \
