@@ -1,9 +1,9 @@
 import logging
-from datetime import datetime, timezone
+
+from urllib3.exceptions import NewConnectionError, ProtocolError
 
 import es_helper
-from model import FilmWork
-import psql_helper
+from etl import Etl
 from state.table_state import TableState, Name as TableName
 from state.saver import State
 from state.storage import JsonFileStorage
@@ -12,95 +12,6 @@ logging.basicConfig(format="%(asctime)s[%(name)s]: %(message)s", level="INFO")
 logger = logging.getLogger(__name__)
 
 
-def update_table(
-        table_name: str,
-        states: State,
-        fw_states: State,
-        req_limit: int = psql_helper.Connection.REQUEST_MAX_ENTRIES
-):
-    # connect and restore
-    es = es_helper.create_connection()
-    psql = psql_helper.create_connection()
-    table_state = states.get_state(table_name)
-    if not table_state:
-        table_state = TableState.create_empty()
-    else:
-        table_state = TableState(**table_state)
-
-    broken = False
-    while not broken:
-        # extract
-        offset = 0 if table_state.position < 0 else table_state.position
-
-        try:
-            ids = psql.get_modified(
-                table_name,
-                table_state.timestamp,
-                offset,
-                req_limit
-            )
-        except:
-            broken = True
-            continue
-
-        if not ids:
-            # no updated data
-            break
-
-        fw_latest_upd = ids[0][1]
-        fw_ids = [i[0] for i in ids]
-        if table_name != TableName.FILM_WORK.value:
-            # FixMe there could be too many IDs(should be limit and offset).
-            #  It's critical for genre
-            try:
-                fw_ids = psql.get_fw_id_by_table(table_name, fw_ids)
-            except:
-                broken = True
-                continue
-
-        # check if FirmWare model was already updated by other field
-        fw_ids = [
-            i for i in fw_ids
-            if not (res := fw_states.get_state(str(i))) or res < fw_latest_upd
-        ]
-        dl_time = datetime.now(tz=timezone.utc)
-
-        if fw_ids:
-            logger.info(
-                "Changes in {} occures update for film works: {}.".format(
-                    table_name,
-                    fw_ids
-                )
-            )
-            try:
-                film_works = psql.get_filmworks(fw_ids)
-            except:
-                broken = True
-                continue
-            fw_models = [
-                FilmWork.create_from_sql(**fw).dict() for fw in film_works
-            ]
-            if fw_models:
-                try:
-                    es.post_bulk(fw_models)
-                except:
-                    broken = True
-                    continue
-                for entry in fw_models:
-                    fw_states.set_state(str(entry["id"]), dl_time, False)
-                # save all cached
-                fw_states.set_state(str(fw_models[0]["id"]), dl_time)
-
-        if table_state.position < 0:
-            table_state.position = 0
-            table_state.next_timestamp = dl_time
-
-        table_state.position += req_limit
-        states.set_state(table_name, table_state.dict())
-
-    table_state.position = -1
-    table_state.timestamp = table_state.next_timestamp
-    states.set_state(table_name, table_state.dict())
 
 
 UPD_TURNS = {
@@ -126,7 +37,8 @@ def main():
         turn = TableName.GENRE.value
 
     for i in range(len(UPD_TURNS)):
-        update_table(turn, states, fw_states)
+        etl = Etl(turn, states, fw_states)
+        etl.action()
         turn = UPD_TURNS[turn]
         states.set_state("turn", turn)
 
