@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class Connection:
-    def __init__(self, address: str = "127.0.0.1:9200"):
+    def __init__(self, connection: Elasticsearch):
         self._connection = Elasticsearch()
 
     def __del__(self):
@@ -59,3 +59,8 @@ class Connection:
     def is_exist(self, index_name: str) -> bool:
         index = elasticsearch.client.indices.IndicesClient(self._connection)
         return index.exists(index=index_name)
+
+
+def create_connection(address: str = "127.0.0.1:9200") -> Optional[Connection]:
+    connection = Elasticsearch(address)
+    return Connection(connection) if connection.ping() else None

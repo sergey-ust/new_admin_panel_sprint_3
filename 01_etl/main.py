@@ -19,8 +19,8 @@ def update_table(
         req_limit: int = psql_helper.Connection.REQUEST_MAX_ENTRIES
 ):
     # connect and restore
-    es = es_helper.Connection()
-    psql = psql_helper.Connection()
+    es = es_helper.create_connection()
+    psql = psql_helper.create_connection()
     table_state = states.get_state(table_name)
     if not table_state:
         table_state = TableState.create_empty()
@@ -92,10 +92,13 @@ UPD_TURNS = {
 
 
 def main():
-    es = es_helper.Connection()
-    if not es.is_exist("movies"):
-        logger.error("Create index first")
-        return -1
+    es = es_helper.create_connection()
+    try:
+        if not es.is_exist("movies"):
+            logger.error("Create index first")
+            return -1
+    except Exception as error:
+        logger.debug(f"Elasticsearch 'is_exist' error: {error}")
 
     states = State(JsonFileStorage("states.json"))
     fw_states = State(JsonFileStorage("states_fw.json"))

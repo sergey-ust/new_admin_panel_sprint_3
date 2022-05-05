@@ -1,10 +1,14 @@
 import datetime
+import logging
 import os
 from string import Template
+from typing import Optional
 from uuid import UUID
 
 import psycopg2
 from psycopg2.extras import DictCursor
+
+logger = logging.getLogger(__name__)
 
 
 class Connection:
@@ -117,3 +121,11 @@ class Connection:
         ).substitute(params)
         self.cursor.execute(query)
         return self.cursor.fetchall()
+
+
+def create_connection() -> Optional[Connection]:
+    try:
+        return Connection()
+    except Exception as exp:
+        logger.error(f"Can't connect to PostgreSQL: {exp}")
+        return None
