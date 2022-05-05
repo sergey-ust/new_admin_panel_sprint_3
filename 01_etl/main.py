@@ -27,16 +27,22 @@ def update_table(
     else:
         table_state = TableState(**table_state)
 
-    finished = False
-    while not finished:
+    broken = False
+    while not broken:
         # extract
         offset = 0 if table_state.position < 0 else table_state.position
-        ids = psql.get_modified(
-            table_name,
-            table_state.timestamp,
-            offset,
-            req_limit
-        )
+
+        try:
+            ids = psql.get_modified(
+                table_name,
+                table_state.timestamp,
+                offset,
+                req_limit
+            )
+        except:
+            broken = True
+            continue
+
         if not ids:
             # no updated data
             break
@@ -46,7 +52,11 @@ def update_table(
         if table_name != TableName.FILM_WORK.value:
             # FixMe there could be too many IDs(should be limit and offset).
             #  It's critical for genre
-            fw_ids = psql.get_fw_id_by_table(table_name, fw_ids)
+            try:
+                fw_ids = psql.get_fw_id_by_table(table_name, fw_ids)
+            except:
+                broken = True
+                continue
 
         # check if FirmWare model was already updated by other field
         fw_ids = [
@@ -62,11 +72,20 @@ def update_table(
                     fw_ids
                 )
             )
-            film_works = psql.get_filmworks(fw_ids)
-            fw_models = [FilmWork.create_from_sql(**fw).dict() for fw in
-                         film_works]
+            try:
+                film_works = psql.get_filmworks(fw_ids)
+            except:
+                broken = True
+                continue
+            fw_models = [
+                FilmWork.create_from_sql(**fw).dict() for fw in film_works
+            ]
             if fw_models:
-                es.post_bulk(fw_models)
+                try:
+                    es.post_bulk(fw_models)
+                except:
+                    broken = True
+                    continue
                 for entry in fw_models:
                     fw_states.set_state(str(entry["id"]), dl_time, False)
                 # save all cached
