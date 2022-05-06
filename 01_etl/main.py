@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 
 from urllib3.exceptions import NewConnectionError, ProtocolError
 
@@ -38,11 +39,12 @@ def main():
     fw_states = State(JsonFileStorage("states_fw.json"))
     turn = t if (t := states.get_state("turn")) else TableName.GENRE.value
 
-    for i in range(len(UPD_TURNS)):
+    while True:
         etl = Etl(turn, states, fw_states)
         etl.action()
         turn = UPD_TURNS[turn]
         states.set_state("turn", turn)
+        sleep(1)
 
 
 if __name__ == '__main__':
