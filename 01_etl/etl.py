@@ -45,14 +45,14 @@ class Etl:
         if _everything_updated := not ids_and_time:
             return None
 
-        fw_latest_upd = ids_and_time[0][1]
+        table_lst_upd = ids_and_time[0][1]
         fw_ids = [i[0] for i in ids_and_time]
         if self._table_name != TableName.FILM_WORK.value:
             fw_ids = psql.get_fw_id_by_table(
                 self._table_name,
                 fw_ids
             )
-        # check if FirmWare model was already updated by other table
+        # check if FilmWork model was already updated by other table
         fw_ids = [
             i for i in fw_ids
             if not (tm := self._fw_states.get_state(
