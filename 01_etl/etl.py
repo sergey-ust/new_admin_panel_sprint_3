@@ -87,10 +87,12 @@ class Etl:
                 except OperationalError:
                     logger.exception("PostgreSQl extraction error.")
                     break
+                dl_time = datetime.now(tz=timezone.utc)
                 if es_films is None:
                     finished = True
+                    if _no_updates := table_state.position < 0:
+                        table_state.next_timestamp = dl_time
                     continue
-                dl_time = datetime.now(tz=timezone.utc)
                 # load
                 if es_films:
                     try:
