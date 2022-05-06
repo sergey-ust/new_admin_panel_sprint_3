@@ -56,7 +56,7 @@ class Etl:
         fw_ids = [
             i for i in fw_ids
             if not (tm := self._fw_states.get_state(
-                str(i))) or tm < fw_latest_upd
+                str(i))) or datetime.fromisoformat(tm) < table_lst_upd
         ]
         if fw_ids:
             logger.info(
@@ -110,11 +110,11 @@ class Etl:
         for entry in es_films[: -1]:
             self._fw_states.set_state(
                 str(entry["id"]),
-                dl_time,
+                dl_time.isoformat(),
                 False
             )
         # save all cached
-        self._fw_states.set_state(str(es_films[-1]["id"]), dl_time)
+        self._fw_states.set_state(str(es_films[-1]["id"]), dl_time.isoformat())
 
     def _safe_state(self, table_state: TableState, dl_time: datetime):
         if _fst_try := table_state.position < 0:
