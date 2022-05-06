@@ -8,6 +8,8 @@ from uuid import UUID
 import psycopg2
 from psycopg2.extras import DictCursor
 
+from backoff import backoff
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,10 +28,6 @@ class Connection:
         self.conn = psycopg2.connect(**dsl, cursor_factory=DictCursor)
         self.cursor = self.conn.cursor()
         self.cursor.execute('SET SESSION TIME ZONE "UTC";')
-
-    def __del__(self):
-        self.cursor.close()
-        self.conn.close()
 
     def get_modified_count(self, table: str, req_time: datetime) -> int:
         self.cursor.execute(
@@ -135,9 +133,6 @@ class Connection:
         return self.cursor.fetchall()
 
 
-def create_connection() -> Optional[Connection]:
-    try:
-        return Connection()
-    except Exception as exp:
-        logger.error(f"Can't connect to PostgreSQL: {exp}")
-        return None
+@backoff([ConnectionError, psycopg2.OperationalError])
+def create_connection() -> Connection:
+    return Connection()

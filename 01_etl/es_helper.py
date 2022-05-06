@@ -4,15 +4,14 @@ from typing import Optional
 import elasticsearch.client.indices
 from elasticsearch import Elasticsearch, helpers
 
+from backoff import backoff
+
 logger = logging.getLogger(__name__)
 
 
 class Connection:
     def __init__(self, connection: Elasticsearch):
-        self._connection = Elasticsearch()
-
-    def __del__(self):
-        self._connection.close()
+        self._connection = connection
 
     def post(
             self,
@@ -61,6 +60,9 @@ class Connection:
         return index.exists(index=index_name)
 
 
-def create_connection(address: str = "127.0.0.1:9200") -> Optional[Connection]:
-    connection = Elasticsearch(address)
-    return Connection(connection) if connection.ping() else None
+@backoff([ConnectionError, ])
+def create_connection() -> Connection:
+    connection = Elasticsearch()
+    if connection.info():
+        return Connection(connection)
+    raise ConnectionError
