@@ -12,6 +12,10 @@ logging.basicConfig(format="%(asctime)s[%(name)s]: %(message)s", level="INFO")
 logger = logging.getLogger(__name__)
 
 
+def delete_entry(uid: str, fw_state: State):
+    es = es_helper.create_connection()
+    es.delete_bulk([uid])
+    fw_state.rm_state(uid)
 
 
 UPD_TURNS = {

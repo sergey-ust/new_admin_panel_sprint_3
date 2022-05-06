@@ -25,3 +25,8 @@ class State:
 
     def get_state(self, key: str) -> Any:
         return self.states.get(key, None)
+
+    def rm_state(self, key: str, auto_flush=True):
+        self.states.pop(key, None)
+        if auto_flush:
+            self.storage.save_state(self.states)
