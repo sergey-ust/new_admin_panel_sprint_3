@@ -26,13 +26,9 @@ class FilmWork(BaseModel):
 
     @staticmethod
     def create_from_sql(**kwargs):
-        roler = lambda role: [
-            Person(id=i["id"], name=i["name"]) for i in kwargs["persons"] if
-            i["role"] == role
-        ]
-        actors = roler("actor")
-        directors = roler("director")
-        writers = roler("writer")
+        actors = FilmWork._roler("actor", **kwargs)
+        directors = FilmWork._roler("director", **kwargs)
+        writers = FilmWork._roler("writer", **kwargs)
 
         return FilmWork(
             id=kwargs["id"],
@@ -46,3 +42,11 @@ class FilmWork(BaseModel):
             actors=actors,
             writers=writers
         )
+
+    @staticmethod
+    def _roler(role, **kwargs):
+        return [
+            Person(id=i["id"], name=i["name"]) for i in kwargs["persons"]
+            if
+            i["role"] == role
+        ]

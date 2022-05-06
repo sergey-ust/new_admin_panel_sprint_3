@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 from time import sleep
 
@@ -29,7 +30,7 @@ def backoff(
                 try:
                     return func(*args, **kwargs)
                 except tuple(exceptions):
-                    pass
+                    logging.exception("Execution problems")
                 sleep_time = start_sleep_time * factor ** i
                 sleep(sleep_time if sleep_time < border_sleep_time
                       else border_sleep_time)

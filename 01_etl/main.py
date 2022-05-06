@@ -1,14 +1,16 @@
 import logging
 from time import sleep
 
+from dotenv import load_dotenv
 from urllib3.exceptions import NewConnectionError, ProtocolError
 
 import es_helper
 from etl import Etl
-from state.table_state import TableState, Name as TableName
+from state.table_state import Name as TableName
 from state.saver import State
 from state.storage import JsonFileStorage
 
+load_dotenv()
 logging.basicConfig(format="%(asctime)s[%(name)s]: %(message)s", level="INFO")
 logger = logging.getLogger(__name__)
 

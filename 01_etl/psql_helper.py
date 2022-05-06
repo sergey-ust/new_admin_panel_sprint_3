@@ -2,7 +2,6 @@ import datetime
 import logging
 import os
 from string import Template
-from typing import Optional
 from uuid import UUID
 
 import psycopg2
@@ -18,16 +17,16 @@ class Connection:
 
     def __init__(self):
         dsl = {
-            'dbname': os.environ.get('DB_NAME', 'movies_database'),
-            'user': 'app',
-            'password': '123qwe',
-            'host': os.environ.get('DB_HOST', '127.0.0.1'),
-            'port': int(os.environ.get('DB_PORT', 5432)),
+            "dbname": os.environ.get("DB_NAME"),
+            "user": os.environ.get("DB_USER"),
+            "password": os.environ.get("DB_PASSWORD"),
+            "host": os.environ.get("DB_HOST", "127.0.0.1"),
+            "port": int(os.environ.get("DB_PORT", 5432)),
         }
         psycopg2.extras.register_uuid()
         self.conn = psycopg2.connect(**dsl, cursor_factory=DictCursor)
         self.cursor = self.conn.cursor()
-        self.cursor.execute('SET SESSION TIME ZONE "UTC";')
+        self.cursor.execute("SET SESSION TIME ZONE 'UTC';")
 
     def get_modified_count(self, table: str, req_time: datetime) -> int:
         self.cursor.execute(
@@ -122,7 +121,7 @@ class Connection:
                 ) persons,\
                 ARRAY_AGG(DISTINCT g.name) genres \
             FROM content.film_work fw \
-            LEFT JOIN content.person_film_work pfw ON pfw.film_work_id = fw.id \
+            LEFT JOIN content.person_film_work pfw ON pfw.film_work_id = fw.id\
             LEFT JOIN content.person p ON p.id = pfw.person_id \
             LEFT JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id \
             LEFT JOIN content.genre g ON g.id = gfw.genre_id \

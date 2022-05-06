@@ -37,7 +37,7 @@ class JsonFileStorage(BaseStorage):
         states = None
         try:
             states = json.loads(text)
-        except Exception as _exp:
+        except Exception:
             logger.warning(f"Can't convert '{text}' to json!")
         return states
 
@@ -46,17 +46,18 @@ class RedisStorage(BaseStorage):
     def __init__(self, redis_adapter: Redis):
         self.redis_adapter = redis_adapter
 
-    def save_state(self, state: dict) -> None:
+    def save_state(self, state: dict):
         for k, v in state.items():
             try:
                 self.redis_adapter.set(k, v)
-            except:
+            except Exception:
                 pass
 
     def retrieve_state(self) -> dict:
         state = {}
-        for k in self.redis_adptor.keys():
+        for k in self.redis_adapter.keys():
             try:
-                self.state[k] = self.redis_adapter.get(k)
-            except:
+                state[k] = self.redis_adapter.get(k)
+            except Exception:
                 pass
+        return state

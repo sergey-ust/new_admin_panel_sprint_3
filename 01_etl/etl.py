@@ -42,7 +42,8 @@ class Etl:
             offset,
             self._req_limit
         )
-        if _everything_updated := not ids_and_time:
+        if not ids_and_time:
+            # everything_updated
             return None
 
         table_lst_upd = ids_and_time[0][1]
@@ -90,7 +91,8 @@ class Etl:
                 dl_time = datetime.now(tz=timezone.utc)
                 if es_films is None:
                     finished = True
-                    if _no_updates := table_state.position < 0:
+                    if table_state.position < 0:
+                        # no_updates
                         table_state.next_timestamp = dl_time
                     continue
                 # load
@@ -119,7 +121,8 @@ class Etl:
         self._fw_states.set_state(str(es_films[-1]["id"]), dl_time.isoformat())
 
     def _safe_state(self, table_state: TableState, dl_time: datetime):
-        if _fst_try := table_state.position < 0:
+        if table_state.position < 0:
+            # fst_try
             table_state.position = 0
             table_state.next_timestamp = dl_time
 
