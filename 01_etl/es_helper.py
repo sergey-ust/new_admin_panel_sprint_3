@@ -1,14 +1,17 @@
+import logging
 from typing import Optional
 
-from elasticsearch import Elasticsearch
+import elasticsearch.client.indices
+from elasticsearch import Elasticsearch, helpers
+
+from backoff import backoff
+
+logger = logging.getLogger(__name__)
 
 
 class Connection:
-    def __init__(self, address: str = "127.0.0.1:9200"):
-        self._connection = Elasticsearch()
-
-    def __del__(self):
-        self._connection.close()
+    def __init__(self, connection: Elasticsearch):
+        self._connection = connection
 
     def post(
             self,
@@ -28,4 +31,38 @@ class Connection:
             id=identifier,
             document=data
         )
-        print(resp['result'])
+        logger.debug(resp["result"])
+
+    def post_bulk(self, data: list[dict], index: str = "movies"):
+        actions = [
+            {
+                "_id": d["id"],
+                **d
+            }
+            for d in data
+        ]
+        result = helpers.bulk(self._connection, actions, index=index)
+        logger.debug(result)
+
+    def delete_bulk(self, data: list[str], index: str = "movies"):
+        actions = [
+            {
+                '_op_type': 'delete',
+                "_id": str(d),
+            }
+            for d in data
+        ]
+        result = helpers.bulk(self._connection, actions, index=index)
+        logger.debug(result)
+
+    def is_exist(self, index_name: str) -> bool:
+        index = elasticsearch.client.indices.IndicesClient(self._connection)
+        return index.exists(index=index_name)
+
+
+@backoff([ConnectionError, ])
+def create_connection() -> Connection:
+    connection = Elasticsearch()
+    if connection.info():
+        return Connection(connection)
+    raise ConnectionError
