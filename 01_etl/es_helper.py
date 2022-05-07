@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional
 
 import elasticsearch.client.indices
@@ -12,6 +13,14 @@ logger = logging.getLogger(__name__)
 class Connection:
     def __init__(self, connection: Elasticsearch):
         self._connection = connection
+
+    def create_index(self, index_name: str, schema: dict):
+        logging.info(
+            f"Creating index {index_name} with the following schema:{schema}"
+        )
+        res = self._connection.indices.create(index=index_name, ignore=400,
+                                              body=schema)
+        logger.info(f"Result: {res}")
 
     def post(
             self,
@@ -60,9 +69,12 @@ class Connection:
         return index.exists(index=index_name)
 
 
-@backoff([ConnectionError, ])
+@backoff([ConnectionError, ConnectionRefusedError, ])
 def create_connection() -> Connection:
-    connection = Elasticsearch()
-    if connection.info():
+    connection = Elasticsearch(
+        [os.environ.get("ES_HOST", "127.0.0.1"), ],
+        port=int(os.environ.get("ES_PORT", 5432))
+    )
+    if connection.ping():
         return Connection(connection)
     raise ConnectionError

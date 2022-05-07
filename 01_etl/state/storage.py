@@ -2,8 +2,6 @@ import json
 import logging
 from typing import Optional
 
-from redis import Redis
-
 from state.saver import BaseStorage
 
 logger = logging.getLogger(__name__)
@@ -40,24 +38,3 @@ class JsonFileStorage(BaseStorage):
         except Exception:
             logger.warning(f"Can't convert '{text}' to json!")
         return states
-
-
-class RedisStorage(BaseStorage):
-    def __init__(self, redis_adapter: Redis):
-        self.redis_adapter = redis_adapter
-
-    def save_state(self, state: dict):
-        for k, v in state.items():
-            try:
-                self.redis_adapter.set(k, v)
-            except Exception:
-                pass
-
-    def retrieve_state(self) -> dict:
-        state = {}
-        for k in self.redis_adapter.keys():
-            try:
-                state[k] = self.redis_adapter.get(k)
-            except Exception:
-                pass
-        return state
