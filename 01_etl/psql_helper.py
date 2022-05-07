@@ -132,6 +132,6 @@ class Connection:
         return self.cursor.fetchall()
 
 
-@backoff([ConnectionError, psycopg2.OperationalError])
+@backoff([ConnectionError, ConnectionRefusedError, psycopg2.OperationalError])
 def create_connection() -> Connection:
     return Connection()

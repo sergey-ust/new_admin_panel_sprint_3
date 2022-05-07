@@ -60,9 +60,9 @@ class Connection:
         return index.exists(index=index_name)
 
 
-@backoff([ConnectionError, ])
+@backoff([ConnectionError, ConnectionRefusedError, ])
 def create_connection() -> Connection:
     connection = Elasticsearch()
-    if connection.info():
+    if connection.ping():
         return Connection(connection)
     raise ConnectionError
