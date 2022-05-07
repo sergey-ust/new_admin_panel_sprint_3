@@ -44,7 +44,6 @@ services:
       - "discovery.type=single-node"
 
 volumes:
-  web-static:
   pgdata:
   etl_log:
 
