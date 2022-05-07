@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional
 
 import elasticsearch.client.indices
@@ -70,7 +71,10 @@ class Connection:
 
 @backoff([ConnectionError, ConnectionRefusedError, ])
 def create_connection() -> Connection:
-    connection = Elasticsearch()
+    connection = Elasticsearch(
+        [os.environ.get("ES_HOST", "127.0.0.1"), ],
+        port=int(os.environ.get("ES_PORT", 5432))
+    )
     if connection.ping():
         return Connection(connection)
     raise ConnectionError
