@@ -30,7 +30,8 @@ UPD_TURNS = {
 }
 
 
-@backoff([ProtocolError, NewConnectionError, ])
+@backoff([ProtocolError, NewConnectionError, ],
+         excp_logger=lambda: logger.exception("Index creation problems"))
 def create_es_index():
     es = es_helper.create_connection()
     if not es.is_exist("movies"):

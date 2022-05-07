@@ -30,7 +30,10 @@ class Etl:
         self._fw_states = fw_states
         self._req_limit = req_limit
 
-    @backoff([OperationalError, ])
+    @backoff(
+        [OperationalError, ],
+        excp_logger=lambda: logger.exception("PostgreSQl extraction error.")
+    )
     def extract(self, table_state: TableState) -> Optional[list[dict]]:
         psql = psql_helper.create_connection()
         offset = table_state.position
@@ -75,7 +78,8 @@ class Etl:
             film_works
         ]
 
-    @backoff([NewConnectionError, ])
+    @backoff([NewConnectionError, ],
+             excp_logger=lambda: logger.exception("Elasticsearch load error."))
     def load(self, films: list[dict]):
         es = es_helper.create_connection()
         es.post_bulk(films)
