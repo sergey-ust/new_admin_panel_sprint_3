@@ -20,6 +20,7 @@ class Etl:
 
     def __init__(
             self,
+            lst_update_time: datetime,
             table_name: str,
             states: State,
             fw_states: State,
@@ -29,6 +30,7 @@ class Etl:
         self._states = states
         self._fw_states = fw_states
         self._req_limit = req_limit
+        self._upd_time = lst_update_time
 
     @backoff(
         [OperationalError, ],
@@ -84,7 +86,7 @@ class Etl:
         es = es_helper.create_connection()
         es.post_bulk(films)
 
-    def action(self):
+    def action(self) -> Optional[datetime]:
         table_state = TableState.create_empty()
         if rd_state := self._states.get_state(self._table_name):
             table_state = TableState(**rd_state)
@@ -94,8 +96,6 @@ class Etl:
             dl_time = datetime.now(tz=timezone.utc)
             if films is None:
                 # no_updates in table
-                if table_state.position < 0:
-                    table_state.next_timestamp = dl_time
                 break
 
             if es_films := self.transform(films):
@@ -105,6 +105,7 @@ class Etl:
             self._save_state(table_state, dl_time)
         # update finished
         self._save_result(table_state)
+        return self._upd_time
 
     def _save_updates(self, es_films: dict, dl_time: datetime):
         # update cache
@@ -119,14 +120,15 @@ class Etl:
 
     def _save_state(self, table_state: TableState, dl_time: datetime):
         if table_state.position < 0:
-            # fst_try
+            # first update
+            self._upd_time = dl_time
             table_state.position = 0
-            table_state.next_timestamp = dl_time
 
         table_state.position += self._req_limit
         self._states.set_state(self._table_name, table_state.dict())
 
     def _save_result(self, table_state: TableState):
+        if table_state.timestamp < self._upd_time:
+            table_state.timestamp = self._upd_time
         table_state.position = -1
-        table_state.timestamp = table_state.next_timestamp
         self._states.set_state(self._table_name, table_state.dict())

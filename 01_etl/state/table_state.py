@@ -13,20 +13,17 @@ class Name(Enum):
 
 class TableState(BaseModel):
     timestamp: datetime
-    next_timestamp: datetime
     position: int
 
     @staticmethod
     def create_empty():
         return TableState(
             timestamp=datetime.fromtimestamp(0.0, timezone.utc),
-            next_timestamp=datetime.fromtimestamp(0.0, timezone.utc),
             position=-1
         )
 
     def serialize(self) -> dict[str, Union[int, datetime]]:
         return {
             "timestamp": self.timestamp,
-            "next_timestamp": self.next_timestamp,
             "position": self.position,
         }

@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from time import sleep
 
 from dotenv import load_dotenv
@@ -45,9 +46,11 @@ def main():
     fw_states = State(JsonFileStorage("logs/states_fw.json"))
     turn = t if (t := states.get_state("turn")) else TableName.GENRE.value
 
+    upd_time = datetime.fromtimestamp(0.0, timezone.utc)
     while True:
-        etl = Etl(turn, states, fw_states)
-        etl.action()
+        etl = Etl(upd_time, turn, states, fw_states)
+        if (time_stamp := etl.action()) > upd_time:
+            upd_time = time_stamp
         turn = UPD_TURNS[turn]
         states.set_state("turn", turn)
         sleep(1)
