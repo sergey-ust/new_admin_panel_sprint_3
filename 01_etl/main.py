@@ -41,8 +41,8 @@ def create_es_index():
 def main():
     create_es_index()
 
-    states = State(JsonFileStorage("states.json"))
-    fw_states = State(JsonFileStorage("states_fw.json"))
+    states = State(JsonFileStorage("logs/states.json"))
+    fw_states = State(JsonFileStorage("logs/states_fw.json"))
     turn = t if (t := states.get_state("turn")) else TableName.GENRE.value
 
     while True:
