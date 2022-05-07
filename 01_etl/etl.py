@@ -7,6 +7,7 @@ from urllib3.exceptions import NewConnectionError
 
 import es_helper
 import psql_helper
+from backoff import backoff
 from model import FilmWork
 from psql_helper import Connection as Sql
 from state.saver import State
@@ -29,11 +30,9 @@ class Etl:
         self._fw_states = fw_states
         self._req_limit = req_limit
 
-    def extract(
-            self,
-            psql: Sql,
-            table_state: TableState
-    ) -> Optional[list[dict]]:
+    @backoff([OperationalError, ])
+    def extract(self, table_state: TableState) -> Optional[list[dict]]:
+        psql = psql_helper.create_connection()
         offset = table_state.position
         offset = offset if offset > 0 else 0
         ids_and_time = psql.get_modified(
@@ -66,11 +65,20 @@ class Etl:
                     fw_ids
                 )
             )
-            film_works = psql.get_filmworks(fw_ids)
-            return [
-                FilmWork.create_from_sql(**fw).dict() for fw in
-                film_works
-            ]
+            return psql.get_filmworks(fw_ids)
+        return []
+
+    @staticmethod
+    def transform(film_works: list[dict]) -> list[dict]:
+        return [
+            FilmWork.create_from_sql(**fw).dict() for fw in
+            film_works
+        ]
+
+    @backoff([NewConnectionError, ])
+    def load(self, films: list[dict]):
+        es = es_helper.create_connection()
+        es.post_bulk(films)
 
     def action(self):
         table_state = TableState.create_empty()
@@ -78,38 +86,23 @@ class Etl:
             table_state = TableState(**rd_state)
 
         while True:
-            psql = psql_helper.create_connection()
-            es = es_helper.create_connection()
-            finished = False
+            films = self.extract(table_state)
+            dl_time = datetime.now(tz=timezone.utc)
+            if films is None:
+                # no_updates in table
+                if table_state.position < 0:
+                    table_state.next_timestamp = dl_time
+                break
 
-            while not finished:
-                try:
-                    es_films = self.extract(psql, table_state)
-                except OperationalError:
-                    logger.exception("PostgreSQl extraction error.")
-                    break
-                dl_time = datetime.now(tz=timezone.utc)
-                if es_films is None:
-                    finished = True
-                    if table_state.position < 0:
-                        # no_updates
-                        table_state.next_timestamp = dl_time
-                    continue
-                # load
-                if es_films:
-                    try:
-                        es.post_bulk(es_films)
-                    except NewConnectionError:
-                        logger.exception("Elasticsearch load error.")
-                        break
-                    self._safe_loaded(es_films, dl_time)
-                # safe the step
-                self._safe_state(table_state, dl_time)
-            # update finished
-            self._safe_finished(table_state)
-            return
+            if es_films := self.transform(films):
+                self.load(es_films)
+                self._save_updates(es_films, dl_time)
+            # safe the iteration state
+            self._save_state(table_state, dl_time)
+        # update finished
+        self._save_result(table_state)
 
-    def _safe_loaded(self, es_films: dict, dl_time: datetime):
+    def _save_updates(self, es_films: dict, dl_time: datetime):
         # update cache
         for entry in es_films[: -1]:
             self._fw_states.set_state(
@@ -120,7 +113,7 @@ class Etl:
         # save all cached
         self._fw_states.set_state(str(es_films[-1]["id"]), dl_time.isoformat())
 
-    def _safe_state(self, table_state: TableState, dl_time: datetime):
+    def _save_state(self, table_state: TableState, dl_time: datetime):
         if table_state.position < 0:
             # fst_try
             table_state.position = 0
@@ -129,7 +122,7 @@ class Etl:
         table_state.position += self._req_limit
         self._states.set_state(self._table_name, table_state.dict())
 
-    def _safe_finished(self, table_state: TableState):
+    def _save_result(self, table_state: TableState):
         table_state.position = -1
         table_state.timestamp = table_state.next_timestamp
         self._states.set_state(self._table_name, table_state.dict())
