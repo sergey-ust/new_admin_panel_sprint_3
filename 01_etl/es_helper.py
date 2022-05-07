@@ -13,6 +13,14 @@ class Connection:
     def __init__(self, connection: Elasticsearch):
         self._connection = connection
 
+    def create_index(self, index_name: str, schema: dict):
+        logging.info(
+            f"Creating index {index_name} with the following schema:{schema}"
+        )
+        res = self._connection.indices.create(index=index_name, ignore=400,
+                                              body=schema)
+        logger.info(f"Result: {res}")
+
     def post(
             self,
             data: dict,

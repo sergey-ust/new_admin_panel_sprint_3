@@ -5,7 +5,9 @@ from dotenv import load_dotenv
 from urllib3.exceptions import NewConnectionError, ProtocolError
 
 import es_helper
+from backoff import backoff
 from etl import Etl
+import es_index_schema
 from state.table_state import Name as TableName
 from state.saver import State
 from state.storage import JsonFileStorage
@@ -28,14 +30,15 @@ UPD_TURNS = {
 }
 
 
-def main():
+@backoff([ProtocolError, NewConnectionError, ])
+def create_es_index():
     es = es_helper.create_connection()
-    try:
-        if not es.is_exist("movies"):
-            logger.error("Create index first")
-            return -1
-    except (ProtocolError, NewConnectionError) as error:
-        logger.exception(f"Elasticsearch 'is_exist' error: {error}")
+    if not es.is_exist("movies"):
+        es.create_index("movies", es_index_schema.get())
+
+
+def main():
+    create_es_index()
 
     states = State(JsonFileStorage("states.json"))
     fw_states = State(JsonFileStorage("states_fw.json"))
